@@ -11,29 +11,25 @@ import javazoom.jl.decoder.JavaLayerException;
 import javazoom.jl.player.advanced.AdvancedPlayer;
 import javazoom.jl.player.advanced.PlaybackEvent;
 import javazoom.jl.player.advanced.PlaybackListener;
-import com.mpatric.mp3agic.Mp3File;  // mp3agic dependency
+import com.mpatric.mp3agic.Mp3File; 
 
 public class MusicClient {
-    // Server settings
-    private static final String SERVER_IP = "192.168.122.38";
+    private static final String SERVER_IP = "";
     private static final int SERVER_PORT = 5050;
     
     private static Socket socket;
     private static ObjectOutputStream objectOut;
     private static ObjectInputStream objectIn;
     
-    // For MP3 playback using JLayer
     private static AdvancedPlayer mp3Player;
     private static File currentSongFile;
     private static volatile boolean isPlaying = false;
     
-    // Timing variables (milliseconds)
     private static long songLengthMs = 0;
-    private static long playbackStartTime = 0; // Time when playback/resume started
-    private static long pauseOffset = 0;       // Elapsed time when paused
-    private static long currentPositionMs = 0; // Current elapsed position
+    private static long playbackStartTime = 0; 
+    private static long pauseOffset = 0;       
+    private static long currentPositionMs = 0; 
     
-    // GUI components
     private static String currentSong = null;
     private static JList<String> songList;
     private static DefaultListModel<String> model;
@@ -43,11 +39,9 @@ public class MusicClient {
     private static Timer progressTimer;
     private static JButton pauseResumeButton;
     
-    // A simple PlaybackListener (attached to every new player)
     private static final PlaybackListener playbackListener = new PlaybackListener() {
         @Override
         public void playbackFinished(PlaybackEvent event) {
-            // When playback finishes normally (or by a stop), check if it reached end.
             isPlaying = false;
             SwingUtilities.invokeLater(() -> {
                 if (currentPositionMs >= songLengthMs - 500) {
@@ -73,7 +67,6 @@ public class MusicClient {
         panel.setBorder(BorderFactory.createEmptyBorder(15,15,15,15));
         panel.setBackground(new Color(25,25,30));
         
-        // Playlist list
         model = new DefaultListModel<>();
         songList = new JList<>(model);
         songList.setFont(new Font("Calibri", Font.PLAIN, 16));
@@ -85,7 +78,6 @@ public class MusicClient {
         JScrollPane scrollPane = new JScrollPane(songList);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
         
-        // Buttons
         JButton playButton = createStyledButton("Play");
         pauseResumeButton = createStyledButton("Pause");
         JButton stopButton = createStyledButton("Stop");
@@ -100,7 +92,6 @@ public class MusicClient {
         buttonPanel.add(nextButton);
         buttonPanel.add(uploadButton);
         
-        // Time label and slider
         timeLabel = new JLabel("00:00 / 00:00", SwingConstants.CENTER);
         timeLabel.setFont(new Font("Calibri", Font.BOLD, 16));
         timeLabel.setForeground(Color.WHITE);
@@ -124,7 +115,6 @@ public class MusicClient {
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         
-        // Button action listeners
         playButton.addActionListener(e -> playSelectedSong());
         pauseResumeButton.addActionListener(e -> togglePauseResume());
         stopButton.addActionListener(e -> stopCurrentSong());
@@ -181,7 +171,6 @@ public class MusicClient {
                     } else if (command.equals("PLAY")) {
                         String name = (String) objectIn.readObject();
                         byte[] data = (byte[]) objectIn.readObject();
-                        // 1) Update GUI selection first
                         SwingUtilities.invokeLater(() -> {
                             String bare = name.replace(".mp3", "");
                             int idx = model.indexOf(bare);
@@ -190,10 +179,9 @@ public class MusicClient {
                                 currentSong = bare;
                             }
                         });
-                        // 2) Then actually play the received bytes
                         playReceivedSong(name, data);
                     } else if(command.equals("PAUSE")) {
-                        objectIn.readObject(); // skip pos
+                        objectIn.readObject(); 
                         SwingUtilities.invokeLater(MusicClient::pausePlayback);
                     } else if(command.equals("RESUME")) {
                         objectIn.readObject();
@@ -205,7 +193,7 @@ public class MusicClient {
                         SwingUtilities.invokeLater(() -> {
                             int index = model.indexOf(nextSong.replace(".mp3", ""));
                             if (index != -1) {
-                                songList.setSelectedIndex(index); // Correct song selected in UI
+                                songList.setSelectedIndex(index);
                                 currentSong = model.get(index);
                             }
                         });
@@ -247,7 +235,6 @@ public class MusicClient {
         }
     }
     
-    // Called when the client receives a PLAY command with song data from the server.
     private static void playReceivedSong(String songFileName, byte[] songData) {
         new Thread(() -> {
             try {
@@ -257,7 +244,6 @@ public class MusicClient {
                 try (FileOutputStream fos = new FileOutputStream(currentSongFile)) {
                     fos.write(songData);
                 }
-                // Use mp3agic to get accurate duration.
                 songLengthMs = estimateSongLength(currentSongFile);
                 SwingUtilities.invokeLater(() -> {
                     progressSlider.setEnabled(true);
@@ -442,12 +428,10 @@ public class MusicClient {
     
     private static long estimateSongLength(File mp3File) {
         try {
-            // Use mp3agic to get the accurate duration in ms.
             Mp3File mp3 = new Mp3File(mp3File);
             return mp3.getLengthInMilliseconds();
         } catch(Exception e) {
             e.printStackTrace();
-            // Fallback estimation:
             long length = mp3File.length();
             return (long)(length * 8.0 / (128 * 1024) * 1000);
         }
@@ -485,7 +469,7 @@ public class MusicClient {
     private static void playNextSong() {
         int index = songList.getSelectedIndex();
         if (index >= 0 && index < model.size() - 1) {
-            currentSong = model.get(index); // don't pre-increment
+            currentSong = model.get(index);
             sendNextCommand(currentSong + ".mp3");
         }
     }
@@ -514,7 +498,6 @@ public class MusicClient {
         }
     }
 
-    /** NEW: send file as single byte[] over the existing connection **/
     private static void handleFileUpload(File songFile) {
         try {
             byte[] data = Files.readAllBytes(songFile.toPath());
